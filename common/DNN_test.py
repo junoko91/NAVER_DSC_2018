@@ -98,7 +98,7 @@ accuracy3 = tf.reduce_mean(tf.cast(tf.nn.in_top_k(hypothesis, tf.argmax(Y_one_ho
 is_top1 = tf.equal(tf.nn.top_k(hypothesis, k=1)[1][:, 0], tf.cast(tf.argmax(Y_one_hot, 1), tf.int32))
 is_top2 = tf.equal(tf.nn.top_k(hypothesis, k=2)[1][:, 1], tf.cast(tf.argmax(Y_one_hot, 1), tf.int32))
 is_top3 = tf.equal(tf.nn.top_k(hypothesis, k=3)[1][:, 2], tf.cast(tf.argmax(Y_one_hot, 1), tf.int32))
-is_top4 = tf.equal(tf.nn.top_k(hypothesis, k=3)[1][:, 2], tf.cast(tf.argmax(Y_one_hot, 1), tf.int32))
+is_top4 = tf.equal(tf.nn.top_k(hypothesis, k=4)[1][:, 2], tf.cast(tf.argmax(Y_one_hot, 1), tf.int32))
 is_in_top1 = is_top1
 is_in_top2 = tf.logical_or(is_in_top1, is_top2)
 is_in_top3 = tf.logical_or(is_in_top2, is_top3)
@@ -137,7 +137,7 @@ def train_start():
                 loss, acc = sess.run([cost, accuracy11], feed_dict={X: X_train, Y: y_train})
                 print("<", i, ' :', 'loss : ', loss, ' acc : ', acc * 100, ">")
                 if int(acc*1000) >= 983:
-                    loss, acc,hypo = sess.run([cost, accuracy44,hypothesis], feed_dict={X: X_test, Y: y_test})
+                    loss, acc,hypo = sess.run([cost, accuracy33,hypothesis], feed_dict={X: X_test, Y: y_test})
                     print(i, ' :', 'loss : ', loss, ' acc : ', acc * 100)
                     top3 = tf.nn.top_k(hypo, k=3)[1].eval()
                     for ii in range(3):
@@ -146,7 +146,7 @@ def train_start():
                     saver.save(sess,"./model/"+str(i)+"model.ckpt")
                     break
                 else:
-                    loss, acc = sess.run([cost, accuracy44], feed_dict={X: X_test, Y: y_test})
+                    loss, acc = sess.run([cost, accuracy33], feed_dict={X: X_test, Y: y_test})
                     print(i, ' :', 'loss : ', loss, ' acc : ', acc * 100)
 
 def predict(x,model_name):
@@ -154,7 +154,7 @@ def predict(x,model_name):
         saver.restore(sess, model_name)
         sess.run(tf.global_variables_initializer())
 
-        loss, acc = sess.run([cost, accuracy44], feed_dict={X: X_test, Y: y_test})
+        loss, acc = sess.run([cost, accuracy33], feed_dict={X: X_test, Y: y_test})
         print( 'loss : ', loss, ' acc : ', acc * 100)
 
 train_start()
