@@ -8,6 +8,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.utils import shuffle
 import matplotlib.pyplot as plt
 import datetime
+from sklearn.preprocessing import MinMaxScaler
 
 data = pd.read_csv("football_players_test1.csv")
 
@@ -30,6 +31,11 @@ y.head()
 
 X=StandardScaler().fit_transform(X)
 
+# # row scaling
+# X = X.T
+# X = StandardScaler().fit_transform(X)
+# X = X.T
+
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=43)
 
 # sm = SMOTE()
@@ -46,6 +52,11 @@ print(y.unique())
 
 nbclass = len(y.unique())
 nbfeature = np.shape(X_test)[1]
+
+learning_rate = 0.00001
+epoch = 200000
+batch_size = 128
+mok = int(len(X_train) / batch_size)
 
 X = tf.placeholder(tf.float32,[None,nbfeature])
 Y = tf.placeholder(tf.int32,[None,1])
@@ -74,7 +85,7 @@ hypothesis = tf.nn.softmax(l5)
 
 cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=l5,labels=Y_one_hot))
 
-optimizer = tf.train.AdamOptimizer(learning_rate=0.01).minimize(cost)
+optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(cost)
 
 correct_prediction = tf.equal(tf.argmax(hypothesis, 1), tf.argmax(Y_one_hot, 1))
 
@@ -100,17 +111,12 @@ accuracy44 = tf.reduce_mean(tf.cast(is_in_top4, tf.float32))
 
 print("train start")
 
-epoch = 200000
-batch_size = 128
-mok = int(len(X_train) / batch_size)
-
 position_dict = {0:"GK",1:"LB",2:"CB",3:"RB",4:"LM",5:"CM",6:"RM",7:"LW",8:"RW",9:"CF",10:"ST"}
 
 saver = tf.train.Saver()
 
-index = 1
-
 def train_start():
+    index = 1
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
 
@@ -150,3 +156,5 @@ def predict(x,model_name):
 
         loss, acc = sess.run([cost, accuracy44], feed_dict={X: X_test, Y: y_test})
         print( 'loss : ', loss, ' acc : ', acc * 100)
+
+train_start()
