@@ -6,7 +6,7 @@ from sklearn.utils import shuffle
 from sklearn.preprocessing import MinMaxScaler
 
 # read csv
-data = pd.read_csv("../../data/smhong/data_index.csv")
+data = pd.read_csv("../../data/smhong/data_index_ver2.csv")
 
 # data shufflinh
 data = shuffle(data)
@@ -24,11 +24,24 @@ nb_classes = len(raw_Y.unique())
 # row scaling
 scalar = MinMaxScaler()
 x_value = raw_X.values
-pre_data = x_value[:, 0:5]
-suf_data = x_value[:, 39:]
-scaled_data = scalar.fit_transform(x_value[:, 5:39])
+pre_data = np.array(x_value[:, 0:5], dtype=np.float32)
+suf_data = np.array(x_value[:, 39:], dtype=np.float32)
+scaled_data = np.array(x_value[:, 5:39], dtype=np.float32)
+x_value.astype(np.float32)
+#a = scalar.fit_transform(x_value[[0, 1], 5:39])
+
+'''
+for i in range(scaled_data.shape[0]):
+    max = np.max(scaled_data[i])
+    min = np.min(scaled_data[i])
+    print(max, min)
+    for j in range(scaled_data.shape[1]):
+        scaled_data[i][j] = (scaled_data[i][j] - min) / (max - min)
+    print(scaled_data[i])
+'''
+
 pre_suf = np.concatenate((pre_data, suf_data), axis=1)
-print(pre_suf)
+#print(pre_suf)
 scaled_data = np.concatenate((pre_suf, scaled_data), axis=1)
 print(scaled_data)
 print(x_value.shape)
@@ -59,7 +72,7 @@ b = tf.Variable(tf.random_normal([nb_classes]), name='bias')
 # dropout (keep_prob) rate  0.7 on training, but should be 1 for testing
 keep_prob = tf.placeholder(tf.float32)
 
-hidden_layer = 256
+hidden_layer = 86
 
 # weights & bias for nn layers
 W1 = tf.get_variable("W1", shape=[nbfeature, hidden_layer],
@@ -89,11 +102,11 @@ L4 = tf.nn.dropout(L4, keep_prob=keep_prob)
 W5 = tf.get_variable("W5", shape=[hidden_layer, nb_classes],
                      initializer=tf.contrib.layers.xavier_initializer())
 b5 = tf.Variable(tf.random_normal([nb_classes]))
-hypothesis = tf.matmul(L2, W5) + b5
+hypothesis = tf.matmul(L4, W5) + b5
 
 # parameters 설정
-learning_rate = 0.0001
-training_epochs = 200000
+learning_rate = 0.00001
+training_epochs = 100000
 batch_size = 5
 total_batch = int(train_num / batch_size)
 
@@ -130,10 +143,9 @@ is_top333 = tf.equal(tf.nn.top_k(hypothesis, k=3)[1][:, 2], tf.cast(tf.argmax(Y_
 is_in_top111 = is_top111
 is_in_top222 = tf.logical_or(is_in_top111, is_top222)
 is_in_top333 = tf.logical_or(is_in_top222, is_top333)
-accuracy1111 = tf.reduce_mean(tf.cast(is_in_top1, tf.float32))
-accuracy2222 = tf.reduce_mean(tf.cast(is_in_top2, tf.float32))
-accuracy3333 = tf.reduce_mean(tf.cast(is_in_top3, tf.float32))
-
+accuracy1111 = tf.reduce_mean(tf.cast(is_in_top111, tf.float32))
+accuracy2222 = tf.reduce_mean(tf.cast(is_in_top222, tf.float32))
+accuracy3333 = tf.reduce_mean(tf.cast(is_in_top333, tf.float32))
 
 # train my model
 for epoch in range(training_epochs):
@@ -145,8 +157,8 @@ for epoch in range(training_epochs):
             print('Epoch:', '%06d' % (epoch + 1), 'cost =', '{:.9f}'.format(c), 'acc =', '{:.5f}'.format(acc * 100))
             #correct_prediction = tf.equal(tf.argmax(hypothesis, 1), tf.argmax(Y, 1))
             #accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
-            #print('Test Data Accuracy:', sess.run(accuracy3333 * 100, feed_dict={
-            #0    X: X_test, Y: Y_test, keep_prob: 1}))
+            print('Test Data Accuracy:', sess.run(accuracy3333 * 100, feed_dict={
+                X: X_test, Y: Y_test, keep_prob: 1}))
 print('Learning Finished!')
 
 '''
