@@ -34,10 +34,10 @@ x_value.astype(np.float32)
 for i in range(scaled_data.shape[0]):
     max = np.max(scaled_data[i])
     min = np.min(scaled_data[i])
-    print(max, min)
+    #print(max, min)
     for j in range(scaled_data.shape[1]):
         scaled_data[i][j] = (scaled_data[i][j] - min) / (max - min)
-    print(scaled_data[i])
+    #print(scaled_data[i])
 '''
 
 pre_suf = np.concatenate((pre_data, suf_data), axis=1)
@@ -72,7 +72,7 @@ b = tf.Variable(tf.random_normal([nb_classes]), name='bias')
 # dropout (keep_prob) rate  0.7 on training, but should be 1 for testing
 keep_prob = tf.placeholder(tf.float32)
 
-hidden_layer = 86
+hidden_layer = 1024
 
 # weights & bias for nn layers
 W1 = tf.get_variable("W1", shape=[nbfeature, hidden_layer],
@@ -105,8 +105,8 @@ b5 = tf.Variable(tf.random_normal([nb_classes]))
 hypothesis = tf.matmul(L4, W5) + b5
 
 # parameters 설정
-learning_rate = 0.00001
-training_epochs = 100000
+learning_rate = 0.05
+training_epochs = 1000
 batch_size = 5
 total_batch = int(train_num / batch_size)
 
@@ -124,8 +124,8 @@ accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 accuracy1 = tf.reduce_mean(tf.cast(tf.nn.in_top_k(hypothesis, tf.argmax(Y_train, 1), k=1), tf.float32))
 accuracy2 = tf.reduce_mean(tf.cast(tf.nn.in_top_k(hypothesis, tf.argmax(Y_train, 1), k=2), tf.float32))
 accuracy3 = tf.reduce_mean(tf.cast(tf.nn.in_top_k(hypothesis, tf.argmax(Y_train, 1), k=3), tf.float32))
-is_top1 = tf.equal(tf.nn.top_k(hypothesis, k=3)[1][:, 0], tf.cast(tf.argmax(Y_train, 1), tf.int32))
-is_top2 = tf.equal(tf.nn.top_k(hypothesis, k=3)[1][:, 1], tf.cast(tf.argmax(Y_train, 1), tf.int32))
+is_top1 = tf.equal(tf.nn.top_k(hypothesis, k=1)[1][:, 0], tf.cast(tf.argmax(Y_train, 1), tf.int32))
+is_top2 = tf.equal(tf.nn.top_k(hypothesis, k=2)[1][:, 1], tf.cast(tf.argmax(Y_train, 1), tf.int32))
 is_top3 = tf.equal(tf.nn.top_k(hypothesis, k=3)[1][:, 2], tf.cast(tf.argmax(Y_train, 1), tf.int32))
 is_in_top1 = is_top1
 is_in_top2 = tf.logical_or(is_in_top1, is_top2)
@@ -137,8 +137,8 @@ accuracy33 = tf.reduce_mean(tf.cast(is_in_top3, tf.float32))
 accuracy111 = tf.reduce_mean(tf.cast(tf.nn.in_top_k(hypothesis, tf.argmax(Y_test, 1), k=1), tf.float32))
 accuracy222 = tf.reduce_mean(tf.cast(tf.nn.in_top_k(hypothesis, tf.argmax(Y_test, 1), k=2), tf.float32))
 accuracy333 = tf.reduce_mean(tf.cast(tf.nn.in_top_k(hypothesis, tf.argmax(Y_test, 1), k=3), tf.float32))
-is_top111 = tf.equal(tf.nn.top_k(hypothesis, k=3)[1][:, 0], tf.cast(tf.argmax(Y_test, 1), tf.int32))
-is_top222 = tf.equal(tf.nn.top_k(hypothesis, k=3)[1][:, 1], tf.cast(tf.argmax(Y_test, 1), tf.int32))
+is_top111 = tf.equal(tf.nn.top_k(hypothesis, k=1)[1][:, 0], tf.cast(tf.argmax(Y_test, 1), tf.int32))
+is_top222 = tf.equal(tf.nn.top_k(hypothesis, k=2)[1][:, 1], tf.cast(tf.argmax(Y_test, 1), tf.int32))
 is_top333 = tf.equal(tf.nn.top_k(hypothesis, k=3)[1][:, 2], tf.cast(tf.argmax(Y_test, 1), tf.int32))
 is_in_top111 = is_top111
 is_in_top222 = tf.logical_or(is_in_top111, is_top222)
@@ -153,7 +153,7 @@ for epoch in range(training_epochs):
         feed_dict = {X: X_train, Y: Y_train, keep_prob: 0.7}
         sess.run(optimizer, feed_dict=feed_dict)
         c, acc = sess.run([cost, accuracy33], feed_dict=feed_dict)
-        if epoch % 1000 == 0:
+        if epoch % 1 == 0:
             print('Epoch:', '%06d' % (epoch + 1), 'cost =', '{:.9f}'.format(c), 'acc =', '{:.5f}'.format(acc * 100))
             #correct_prediction = tf.equal(tf.argmax(hypothesis, 1), tf.argmax(Y, 1))
             #accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
