@@ -9,6 +9,7 @@ from sklearn.utils import shuffle
 import matplotlib.pyplot as plt
 import datetime
 from sklearn.preprocessing import MinMaxScaler
+from itertools import combinations
 
 data = pd.read_csv("football_players_test1.csv")
 
@@ -28,8 +29,14 @@ y.head()
 
 # mdict = dict(enumerate(y.unique()))
 # y.replace(to_replace=mdict.values(),value=mdict.keys(),inplace=True)
-
+# Ability = X.values[:,5:-1]
+# Ability = np.sum(Ability,axis=1)
+# Ability = np.reshape(Ability,[len(X),1])
+# Ability=StandardScaler().fit_transform(Ability)
 X=StandardScaler().fit_transform(X)
+
+
+
 
 # # row scaling
 # X = X.T
@@ -53,7 +60,7 @@ print(y.unique())
 nbclass = len(y.unique())
 nbfeature = np.shape(X_test)[1]
 
-learning_rate = 0.00001
+learning_rate = 0.0001
 epoch = 200000
 batch_size = 128
 mok = int(len(X_train) / batch_size)
@@ -111,7 +118,7 @@ accuracy44 = tf.reduce_mean(tf.cast(is_in_top4, tf.float32))
 
 print("train start")
 
-position_dict = {0:"GK",1:"LB",2:"CB",3:"RB",4:"LM",5:"CM",6:"RM",7:"LW",8:"RW",9:"CF",10:"ST"}
+position_dict = {0:"GK",1:"LB",2:"CB",3:"RB",4:"LM",5:"CM",6:"RM",7:"LW",8:"RW",9:"FW"}
 
 saver = tf.train.Saver()
 
@@ -136,25 +143,65 @@ def train_start():
             if i % mok == 0:
                 loss, acc = sess.run([cost, accuracy11], feed_dict={X: X_train, Y: y_train})
                 print("<", i, ' :', 'loss : ', loss, ' acc : ', acc * 100, ">")
-                if int(acc*1000) >= 983:
+                if int(loss*100) <= 100:
                     loss, acc,hypo = sess.run([cost, accuracy33,hypothesis], feed_dict={X: X_test, Y: y_test})
                     print(i, ' :', 'loss : ', loss, ' acc : ', acc * 100)
                     top3 = tf.nn.top_k(hypo, k=3)[1].eval()
                     for ii in range(3):
                         print(ii," : ",position_dict[top3[0][ii]]," ")
-                    print("")
+                    hypo = hypo*1000
+                    hypo = np.sort(hypo,axis=1)
                     saver.save(sess,"./model/"+str(i)+"model.ckpt")
                     break
                 else:
                     loss, acc = sess.run([cost, accuracy33], feed_dict={X: X_test, Y: y_test})
                     print(i, ' :', 'loss : ', loss, ' acc : ', acc * 100)
 
-def predict(x,model_name):
-    with tf.Session() as sess:
-        saver.restore(sess, model_name)
-        sess.run(tf.global_variables_initializer())
+list_dict = {"gk":list,"back":list,"mid":list,"fw":list}
 
-        loss, acc = sess.run([cost, accuracy33], feed_dict={X: X_test, Y: y_test})
-        print( 'loss : ', loss, ' acc : ', acc * 100)
+def model_set_before_start(model_name:str):
+    model_set_before_start().sess = None
+    if model_set_before_start().sess is None:
+        if model_name is None or model_name == "":
+            return model_set_before_start().sess
+        model_set_before_start().sess = tf.Session()
+        saver.restore(model_set_before_start().sess, model_name)
+        model_set_before_start().sess.run(tf.global_variables_initializer())
+    return model_set_before_start().sess
+
+def predict_and_add(x:np.ndarray,ability:int,name:str,model_name:str):
+    sess = model_set_before_start("")
+    loss, acc,hypo = sess.run([cost, accuracy33,hypothesis], feed_dict={X: X_test, Y: y_test})
+    top3 = tf.nn.top_k(hypo, k=3)[1].eval()
+    for ii in range(np.shape(top3[1])):
+        tmp_list = {name:ability}
+        if top3[ii] == 0:
+            list_dict["gk"].append(tmp_list)
+        elif top3[ii] <=3:
+            list_dict["back"].append(tmp_list)
+        elif top3[ii] <=6:
+            list_dict["mid"].append(tmp_list)
+        elif top3[ii] <=9:
+            list_dict["fw"].append(tmp_list)
+
+def comb(back:int , mid:int , fw:int):
+    comb_gk = list(combinations(list_dict["gk"],1))
+    comb_back = list(combinations(list_dict["back"],back))
+    comb_mid = list(combinations(list_dict["mid"],mid))
+    comb_fw = list(combinations(list_dict["fw"],fw))
+
+    tmp_dict_list = []
+    for i in comb_gk:
+        for j in comb_back:
+            for k in comb_mid:
+                for l in comb_fw:
+                    tmp = {**i,**j,**k,**l}
+                    # 점수를 계산해서 tmp 맨마지막에 넣어줘야함
+                    if len(tmp) == 11:
+                        score = sum(tmp.values())
+                        tmp["score"] = score
+                        tmp_dict_list.append(tmp)
+
+    return tmp_dict_list
 
 train_start()
