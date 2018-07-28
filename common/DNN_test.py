@@ -11,15 +11,15 @@ import datetime
 from sklearn.preprocessing import MinMaxScaler
 from itertools import combinations
 
-data = pd.read_csv("football_players_test1.csv")
+data = pd.read_csv("football_players_final.csv")
 
 data = shuffle(data)
 
-data.info()
-
-X = data.drop("Club_Position",axis=1)
-X = X.drop("Club_Position1",axis=1)
-y = data["Club_Position1"]
+X = data.drop("Position",axis=1)
+X = X.drop("Position_int",axis=1)
+X = X.drop("Nationality",axis=1)
+X = X.drop("Name",axis=1)
+y = data["Position_int"]
 
 X.head()
 y.head()
@@ -72,19 +72,19 @@ Y_one_hot = tf.reshape(Y_one_hot,[-1,nbclass])
 
 keep_prob = tf.placeholder(tf.float32)
 
-size_l1 =4096
+size_l1 = 2048
 size_l2 = size_l1/2
 size_l3 =size_l2/2
 size_l4 =size_l3/2
 
-rate = 0.97
-l1 = tf.layers.dense(X,size_l1,activation=tf.nn.relu,bias_initializer=tf.contrib.layers.xavier_initializer())
+rate = 0.50
+l1 = tf.layers.dense(X,size_l1,activation=tf.nn.relu,bias_initializer=tf.contrib.layers.variance_scaling_initializer())
 l1 = tf.layers.dropout(l1,rate=rate)
-l2 = tf.layers.dense(l1,size_l2,activation=tf.nn.relu,bias_initializer=tf.contrib.layers.xavier_initializer())
+l2 = tf.layers.dense(l1,size_l2,activation=tf.nn.relu,bias_initializer=tf.contrib.layers.variance_scaling_initializer())
 l2 = tf.layers.dropout(l2,rate=rate)
-l3 = tf.layers.dense(l2,size_l3,activation=tf.nn.relu,bias_initializer=tf.contrib.layers.xavier_initializer())
+l3 = tf.layers.dense(l2,size_l3,activation=tf.nn.relu,bias_initializer=tf.contrib.layers.variance_scaling_initializer())
 l3 = tf.layers.dropout(l3,rate=rate)
-l4 = tf.layers.dense(l3,size_l4,activation=tf.nn.relu,bias_initializer=tf.contrib.layers.xavier_initializer())
+l4 = tf.layers.dense(l3,size_l4,activation=tf.nn.relu,bias_initializer=tf.contrib.layers.variance_scaling_initializer())
 l4 = tf.layers.dropout(l4,rate=rate)
 l5 = tf.layers.dense(l1,nbclass,activation=None)
 
@@ -143,7 +143,7 @@ def train_start():
             if i % mok == 0:
                 loss, acc = sess.run([cost, accuracy11], feed_dict={X: X_train, Y: y_train})
                 print("<", i, ' :', 'loss : ', loss, ' acc : ', acc * 100, ">")
-                if int(loss*100) <= 100:
+                if int(acc*100) >= 90:
                     loss, acc,hypo = sess.run([cost, accuracy33,hypothesis], feed_dict={X: X_test, Y: y_test})
                     print(i, ' :', 'loss : ', loss, ' acc : ', acc * 100)
                     top3 = tf.nn.top_k(hypo, k=3)[1].eval()
@@ -173,24 +173,37 @@ def model_set_before_start(model_name:str):
 
 def predict_and_add(x:np.ndarray,model_name:str,list_dict):
     sess = model_set_before_start(model_name)
-    feed_x = x[1:]
-    hypo = sess.run(l5, feed_dict={X: np.reshape(feed_x,[1,len(feed_x)])})
+    feed_x = x[:,1:]
+    hypo = sess.run(l5, feed_dict={X: feed_x})
     hypo = hypo * 1000
     top3 = tf.nn.top_k(hypo, k=3)[1].eval(session=sess)
-    tmp_list = []
-    for ii in range(3):
-        tmp_dict = {x[0]:hypo[0][top3[0][ii]]}
-        if top3[0][ii] == 0:
-            tmp_list = list_dict["gk"]
-        elif top3[0][ii] <=3:
-            tmp_list = list_dict["back"]
-        elif top3[0][ii] <=6:
-            tmp_list = list_dict["mid"]
-        elif top3[0][ii] <=9:
-            tmp_list = list_dict["fw"]
-        tmp_list.add(tmp_dict)
+    for iii in range(len(x)):
+        flags = [True,True,True,True]
+        print(top3[iii])
+        for ii in range(3):
+            tmp_dict = {x[iii][0]:hypo[iii][top3[0][ii]]}
+            if top3[iii][ii] == 0:
+                if(flags[0]):
+                    tmp_list = list_dict["gk"]
+                    flags[0] = False
+                    tmp_list.append(tmp_dict)
+            elif top3[iii][ii] <=3:
+                if(flags[1]):
+                    tmp_list = list_dict["back"]
+                    flags[1] = False
+                    tmp_list.append(tmp_dict)
+            elif top3[iii][ii] <=6:
+                if(flags[2]):
+                    tmp_list = list_dict["mid"]
+                    flags[2] = False
+                    tmp_list.append(tmp_dict)
+            elif top3[iii][ii] <=9:
+                if(flags[3]):
+                    tmp_list = list_dict["fw"]
+                    flags[3] = False
+                    tmp_list.append(tmp_dict)
 
-def comb(back:int , mid:int , fw:int):
+def comb(list_dict,back:int , mid:int , fw:int):
     comb_gk = list(combinations(list_dict["gk"],1))
     comb_back = list(combinations(list_dict["back"],back))
     comb_mid = list(combinations(list_dict["mid"],mid))
@@ -213,9 +226,12 @@ def comb(back:int , mid:int , fw:int):
 
 # train_start()
 
-X1 = pd.read_csv("football_players_kor.csv")
-list_dict = {"gk":list,"back":list,"mid":list,"fw":list}
-for i in range(len(X1)):
-    predict_and_add(X1.values[i],"./model/kor.model.ckpt",list_dict)
-tmp = comb(4,4,2)
+X1 = pd.read_csv("football_players_final_kor.csv")
+X1 = X1.drop("Position",axis=1)
+X1 = X1.drop("Position_int",axis=1)
+X1 = X1.drop("Nationality",axis=1)
+X1 = X1.drop("Name",axis=1)
+list_dict = {"gk":list(),"back":list(),"mid":list(),"fw":list()}
+predict_and_add(X1.values,"./model/kor.model.ckpt",list_dict)
+tmp = comb(list_dict,4,4,2)
 print(tmp)
