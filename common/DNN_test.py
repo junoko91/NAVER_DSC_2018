@@ -151,38 +151,44 @@ def train_start():
                         print(ii," : ",position_dict[top3[0][ii]]," ")
                     hypo = hypo*1000
                     hypo = np.sort(hypo,axis=1)
-                    saver.save(sess,"./model/"+str(i)+"model.ckpt")
+                    saver.save(sess,"./model/kor.model.ckpt")
                     break
                 else:
                     loss, acc = sess.run([cost, accuracy33], feed_dict={X: X_test, Y: y_test})
                     print(i, ' :', 'loss : ', loss, ' acc : ', acc * 100)
 
-list_dict = {"gk":list,"back":list,"mid":list,"fw":list}
 
 def model_set_before_start(model_name:str):
-    model_set_before_start().sess = None
-    if model_set_before_start().sess is None:
-        if model_name is None or model_name == "":
-            return model_set_before_start().sess
-        model_set_before_start().sess = tf.Session()
-        saver.restore(model_set_before_start().sess, model_name)
-        model_set_before_start().sess.run(tf.global_variables_initializer())
-    return model_set_before_start().sess
+    model_set_before_start.last_model_name = ""
+    model_set_before_start.sess = None
 
-def predict_and_add(x:np.ndarray,ability:int,name:str,model_name:str):
-    sess = model_set_before_start("")
-    loss, acc,hypo = sess.run([cost, accuracy33,hypothesis], feed_dict={X: X_test, Y: y_test})
-    top3 = tf.nn.top_k(hypo, k=3)[1].eval()
-    for ii in range(np.shape(top3[1])):
-        tmp_list = {name:ability}
-        if top3[ii] == 0:
-            list_dict["gk"].append(tmp_list)
-        elif top3[ii] <=3:
-            list_dict["back"].append(tmp_list)
-        elif top3[ii] <=6:
-            list_dict["mid"].append(tmp_list)
-        elif top3[ii] <=9:
-            list_dict["fw"].append(tmp_list)
+    if model_set_before_start.sess is not None and model_name == model_set_before_start.last_model_name:
+        return model_set_before_start.sess
+    elif model_set_before_start.sess is None:
+        model_set_before_start.last_model_name = model_name
+        model_set_before_start.sess = tf.Session()
+        saver.restore(model_set_before_start.sess, model_name)
+        model_set_before_start.sess.run(tf.global_variables_initializer())
+    return model_set_before_start.sess
+
+def predict_and_add(x:np.ndarray,model_name:str,list_dict):
+    sess = model_set_before_start(model_name)
+    feed_x = x[1:]
+    hypo = sess.run(l5, feed_dict={X: np.reshape(feed_x,[1,len(feed_x)])})
+    hypo = hypo * 1000
+    top3 = tf.nn.top_k(hypo, k=3)[1].eval(session=sess)
+    tmp_list = []
+    for ii in range(3):
+        tmp_dict = {x[0]:hypo[0][top3[0][ii]]}
+        if top3[0][ii] == 0:
+            tmp_list = list_dict["gk"]
+        elif top3[0][ii] <=3:
+            tmp_list = list_dict["back"]
+        elif top3[0][ii] <=6:
+            tmp_list = list_dict["mid"]
+        elif top3[0][ii] <=9:
+            tmp_list = list_dict["fw"]
+        tmp_list.add(tmp_dict)
 
 def comb(back:int , mid:int , fw:int):
     comb_gk = list(combinations(list_dict["gk"],1))
@@ -196,12 +202,20 @@ def comb(back:int , mid:int , fw:int):
             for k in comb_mid:
                 for l in comb_fw:
                     tmp = {**i,**j,**k,**l}
+                    # tmp = i+j+k+l
                     # 점수를 계산해서 tmp 맨마지막에 넣어줘야함
                     if len(tmp) == 11:
                         score = sum(tmp.values())
-                        tmp["score"] = score
+                        tmp["score"] = int(score)
                         tmp_dict_list.append(tmp)
 
     return tmp_dict_list
 
-train_start()
+# train_start()
+
+X1 = pd.read_csv("football_players_kor.csv")
+list_dict = {"gk":list,"back":list,"mid":list,"fw":list}
+for i in range(len(X1)):
+    predict_and_add(X1.values[i],"./model/kor.model.ckpt",list_dict)
+tmp = comb(4,4,2)
+print(tmp)
