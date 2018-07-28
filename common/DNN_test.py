@@ -16,34 +16,45 @@ data = pd.read_csv("football_players_final.csv")
 data = shuffle(data)
 
 X = data.drop("Position",axis=1)
-X = X.drop("Position_int",axis=1)
 X = X.drop("Nationality",axis=1)
 X = X.drop("Name",axis=1)
+X = X.drop("Position_int",axis=1)
 y = data["Position_int"]
 
 X.head()
 y.head()
 
+# row scaling
+scalar = MinMaxScaler()
+x_value = X.values
+pre_data = np.array(x_value[:, 0:9], dtype=np.float32)
+suf_data = np.array(x_value[:, 43:], dtype=np.float32)
+scaled_data = np.array(x_value[:, 9:43], dtype=np.float32)
+x_value.astype(np.float32)
+
+
+for i in range(scaled_data.shape[0]):
+    max = np.max(scaled_data[i])
+    min = np.min(scaled_data[i])
+    for j in range(scaled_data.shape[1]):
+        scaled_data[i][j] = (scaled_data[i][j] - min) / (max - min)
+
+
+pre_suf = np.concatenate((pre_data, suf_data), axis=1)
+scaled_data = np.concatenate((pre_suf, scaled_data), axis=1)
+
 # pca = PCA(n_components=15)
 # X = pca.fit_transform(X)
 
-# mdict = dict(enumerate(y.unique()))
-# y.replace(to_replace=mdict.values(),value=mdict.keys(),inplace=True)
-# Ability = X.values[:,5:-1]
-# Ability = np.sum(Ability,axis=1)
-# Ability = np.reshape(Ability,[len(X),1])
-# Ability=StandardScaler().fit_transform(Ability)
-X=StandardScaler().fit_transform(X)
-
-
-
-
+# X=StandardScaler().fit_transform(X)
+#
 # # row scaling
 # X = X.T
 # X = StandardScaler().fit_transform(X)
 # X = X.T
 
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=43)
+# X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=43)
+X_train, X_test, y_train, y_test = train_test_split(scaled_data, y, test_size=0.3, random_state=43)
 
 # sm = SMOTE()
 # X_train, y_train = sm.fit_sample(X_train, y_train.ravel())
@@ -60,9 +71,10 @@ print(y.unique())
 nbclass = len(y.unique())
 nbfeature = np.shape(X_test)[1]
 
-learning_rate = 0.0001
+top_k = 2
+learning_rate = 0.001
 epoch = 200000
-batch_size = 128
+batch_size = 2048
 mok = int(len(X_train) / batch_size)
 
 X = tf.placeholder(tf.float32,[None,nbfeature])
@@ -72,12 +84,12 @@ Y_one_hot = tf.reshape(Y_one_hot,[-1,nbclass])
 
 keep_prob = tf.placeholder(tf.float32)
 
-size_l1 = 2048
+size_l1 =4096
 size_l2 = size_l1/2
 size_l3 =size_l2/2
 size_l4 =size_l3/2
 
-rate = 0.50
+rate = 0.20
 l1 = tf.layers.dense(X,size_l1,activation=tf.nn.relu,bias_initializer=tf.contrib.layers.variance_scaling_initializer())
 l1 = tf.layers.dropout(l1,rate=rate)
 l2 = tf.layers.dense(l1,size_l2,activation=tf.nn.relu,bias_initializer=tf.contrib.layers.variance_scaling_initializer())
@@ -144,17 +156,16 @@ def train_start():
                 loss, acc = sess.run([cost, accuracy11], feed_dict={X: X_train, Y: y_train})
                 print("<", i, ' :', 'loss : ', loss, ' acc : ', acc * 100, ">")
                 if int(acc*100) >= 90:
-                    loss, acc,hypo = sess.run([cost, accuracy33,hypothesis], feed_dict={X: X_test, Y: y_test})
+                    loss, acc,hypo = sess.run([cost, accuracy22,hypothesis], feed_dict={X: X_test, Y: y_test})
                     print(i, ' :', 'loss : ', loss, ' acc : ', acc * 100)
-                    top3 = tf.nn.top_k(hypo, k=3)[1].eval()
-                    for ii in range(3):
-                        print(ii," : ",position_dict[top3[0][ii]]," ")
-                    hypo = hypo*1000
-                    hypo = np.sort(hypo,axis=1)
+                    top3 = tf.nn.top_k(hypo, k=top_k)[1].eval()
+                    # for ii in range(3):
+                    #     print(ii," : ",position_dict[top3[0][ii]]," ")
+
                     saver.save(sess,"./model/kor.model.ckpt")
                     break
                 else:
-                    loss, acc = sess.run([cost, accuracy33], feed_dict={X: X_test, Y: y_test})
+                    loss, acc = sess.run([cost, accuracy22], feed_dict={X: X_test, Y: y_test})
                     print(i, ' :', 'loss : ', loss, ' acc : ', acc * 100)
 
 
@@ -164,23 +175,25 @@ def model_set_before_start(model_name:str):
 
     if model_set_before_start.sess is not None and model_name == model_set_before_start.last_model_name:
         return model_set_before_start.sess
+
     elif model_set_before_start.sess is None:
         model_set_before_start.last_model_name = model_name
         model_set_before_start.sess = tf.Session()
         saver.restore(model_set_before_start.sess, model_name)
-        model_set_before_start.sess.run(tf.global_variables_initializer())
     return model_set_before_start.sess
 
 def predict_and_add(x:np.ndarray,model_name:str,list_dict):
     sess = model_set_before_start(model_name)
     feed_x = x[:,1:]
     hypo = sess.run(l5, feed_dict={X: feed_x})
-    hypo = hypo * 1000
-    top3 = tf.nn.top_k(hypo, k=3)[1].eval(session=sess)
+    hypo * 100
+    top3 = tf.nn.top_k(hypo, k=top_k)[1].eval(session=sess)
     for iii in range(len(x)):
         flags = [True,True,True,True]
         print(top3[iii])
-        for ii in range(3):
+        # for i in range(3):
+        #     print("position ",i," ",position_dict[top3[iii][i]])
+        for ii in range(top_k):
             tmp_dict = {x[iii][0]:hypo[iii][top3[0][ii]]}
             if top3[iii][ii] == 0:
                 if(flags[0]):
@@ -214,23 +227,19 @@ def comb(list_dict,back:int , mid:int , fw:int):
         for j in comb_back:
             for k in comb_mid:
                 for l in comb_fw:
-                    tmp = {**i,**j,**k,**l}
+                    tmp =i+j+k+l
                     # tmp = i+j+k+l
                     # 점수를 계산해서 tmp 맨마지막에 넣어줘야함
                     if len(tmp) == 11:
-                        score = sum(tmp.values())
-                        tmp["score"] = int(score)
                         tmp_dict_list.append(tmp)
 
     return tmp_dict_list
 
-# train_start()
+train_start()
 
 X1 = pd.read_csv("football_players_final_kor.csv")
 X1 = X1.drop("Position",axis=1)
-X1 = X1.drop("Position_int",axis=1)
 X1 = X1.drop("Nationality",axis=1)
-X1 = X1.drop("Name",axis=1)
 list_dict = {"gk":list(),"back":list(),"mid":list(),"fw":list()}
 predict_and_add(X1.values,"./model/kor.model.ckpt",list_dict)
 tmp = comb(list_dict,4,4,2)
