@@ -3,7 +3,7 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.utils import shuffle
-from sklearn import svm, metrics
+from sklearn import linear_model, metrics
 
 def top_n_accuracy(train_data_pre, y_data, n):
     train_best_n = np.argsort(train_data_pre, axis=1)[:, -n:]
@@ -37,23 +37,23 @@ data = shuffle(data)
 
 X = data.drop("Club_Position", axis=1)
 X = X.drop("Club_Position1", axis=1)
-y = data["Club_Position1"]
+Y = data["Club_Position1"]
 
-nbclass = len(y.unique())
+nbclass = len(Y.unique())
 
 print(nbclass)
 
 X.head()
-y.head()
+Y.head()
 
 X = StandardScaler().fit_transform(X)
 
-X_train, X_test, Y_train, Y_test = train_test_split(X, y, test_size=0.3, random_state=43)
+X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.3, random_state=43)
 
 print("X_Train Shape :", np.shape(X_train))
 print("Y_Train Shape :", np.shape(Y_train))
 
-clf = svm.SVC(probability=True)
+clf = linear_model.LogisticRegression()
 clf.fit(X_train, Y_train)
 
 train_data_pre = clf.predict(X_train)
@@ -75,19 +75,15 @@ print("Test Data Top 3 Accuracy :", test_top_k_acc_score)
 get_classes_prob(test_data_pre, Y_test.values, 3)
 
 '''
-Train Data Accuracy : 0.6521567075583696
-Train Data Top 3 Accuracy : 93.96517609814009
-Test Data Accuracy : 0.5997229916897507
-Test Data Top 3 Accuracy : 90.81255771006464
-i = 0 , total = 456.0 , correct = 456.0 , prob = 100.0
-i = 1 , total = 493.0 , correct = 471.0 , prob = 95.53752535496957
-i = 2 , total = 375.0 , correct = 348.0 , prob = 92.80000000000001
-i = 3 , total = 563.0 , correct = 534.0 , prob = 94.84902309058614
-i = 4 , total = 450.0 , correct = 399.0 , prob = 88.66666666666667
-i = 5 , total = 721.0 , correct = 690.0 , prob = 95.7004160887656
-i = 6 , total = 460.0 , correct = 418.0 , prob = 90.8695652173913
-i = 7 , total = 151.0 , correct = 70.0 , prob = 46.35761589403973
-i = 8 , total = 19.0 , correct = 0.0 , prob = 0.0
-i = 9 , total = 146.0 , correct = 81.0 , prob = 55.47945205479452
-i = 10 , total = 498.0 , correct = 467.0 , prob = 93.77510040160642
+i = 0 , total = 460.0 , correct = 460.0 , prob = 100.0
+i = 1 , total = 518.0 , correct = 479.0 , prob = 92.47104247104248
+i = 2 , total = 358.0 , correct = 346.0 , prob = 96.64804469273743
+i = 3 , total = 570.0 , correct = 542.0 , prob = 95.08771929824562
+i = 4 , total = 407.0 , correct = 340.0 , prob = 83.53808353808354
+i = 5 , total = 751.0 , correct = 706.0 , prob = 94.00798934753661
+i = 6 , total = 446.0 , correct = 368.0 , prob = 82.51121076233184
+i = 7 , total = 141.0 , correct = 58.0 , prob = 41.13475177304964
+i = 8 , total = 11.0 , correct = 0.0 , prob = 0.0
+i = 9 , total = 137.0 , correct = 61.0 , prob = 44.52554744525548
+i = 10 , total = 533.0 , correct = 515.0 , prob = 96.62288930581614
 '''
