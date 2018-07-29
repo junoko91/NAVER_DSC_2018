@@ -24,37 +24,37 @@ y = data["Position_int"]
 X.head()
 y.head()
 
-# row scaling
-scalar = MinMaxScaler()
-x_value = X.values
-pre_data = np.array(x_value[:, 0:9], dtype=np.float32)
-suf_data = np.array(x_value[:, 43:], dtype=np.float32)
-scaled_data = np.array(x_value[:, 9:43], dtype=np.float32)
-x_value.astype(np.float32)
-
-
-for i in range(scaled_data.shape[0]):
-    max = np.max(scaled_data[i])
-    min = np.min(scaled_data[i])
-    for j in range(scaled_data.shape[1]):
-        scaled_data[i][j] = (scaled_data[i][j] - min) / (max - min)
-
-
-pre_suf = np.concatenate((pre_data, suf_data), axis=1)
-scaled_data = np.concatenate((pre_suf, scaled_data), axis=1)
+# # row scaling
+# scalar = MinMaxScaler()
+# x_value = X.values
+# pre_data = np.array(x_value[:, 0:9], dtype=np.float32)
+# suf_data = np.array(x_value[:, 43:], dtype=np.float32)
+# scaled_data = np.array(x_value[:, 9:43], dtype=np.float32)
+# x_value.astype(np.float32)
+#
+#
+# for i in range(scaled_data.shape[0]):
+#     max = np.max(scaled_data[i])
+#     min = np.min(scaled_data[i])
+#     for j in range(scaled_data.shape[1]):
+#         scaled_data[i][j] = (scaled_data[i][j] - min) / (max - min)
+#
+#
+# pre_suf = np.concatenate((pre_data, suf_data), axis=1)
+# scaled_data = np.concatenate((pre_suf, scaled_data), axis=1)
 
 # pca = PCA(n_components=15)
 # X = pca.fit_transform(X)
 
-# X=StandardScaler().fit_transform(X)
+X=StandardScaler().fit_transform(X)
 #
 # # row scaling
 # X = X.T
 # X = StandardScaler().fit_transform(X)
 # X = X.T
 
-# X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=43)
-X_train, X_test, y_train, y_test = train_test_split(scaled_data, y, test_size=0.3, random_state=43)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=43)
+# X_train, X_test, y_train, y_test = train_test_split(scaled_data, y, test_size=0.3, random_state=43)
 
 # sm = SMOTE()
 # X_train, y_train = sm.fit_sample(X_train, y_train.ravel())
@@ -155,14 +155,14 @@ def train_start():
             if i % mok == 0:
                 loss, acc = sess.run([cost, accuracy11], feed_dict={X: X_train, Y: y_train})
                 print("<", i, ' :', 'loss : ', loss, ' acc : ', acc * 100, ">")
-                if int(acc*100) >= 90:
+                if int(acc*100) >= 95:
                     loss, acc,hypo = sess.run([cost, accuracy22,hypothesis], feed_dict={X: X_test, Y: y_test})
                     print(i, ' :', 'loss : ', loss, ' acc : ', acc * 100)
                     top3 = tf.nn.top_k(hypo, k=top_k)[1].eval()
                     # for ii in range(3):
                     #     print(ii," : ",position_dict[top3[0][ii]]," ")
 
-                    saver.save(sess,"./model/kor.model.ckpt")
+                    saver.save(sess,"./model/kor1.model.ckpt")
                     break
                 else:
                     loss, acc = sess.run([cost, accuracy22], feed_dict={X: X_test, Y: y_test})
@@ -185,62 +185,101 @@ def model_set_before_start(model_name:str):
 def predict_and_add(x:np.ndarray,model_name:str,list_dict):
     sess = model_set_before_start(model_name)
     feed_x = x[:,1:]
+    feed_x=StandardScaler().fit_transform(feed_x)
     hypo = sess.run(l5, feed_dict={X: feed_x})
     hypo * 100
     top3 = tf.nn.top_k(hypo, k=top_k)[1].eval(session=sess)
     for iii in range(len(x)):
-        flags = [True,True,True,True]
+        flags = [True,True,True,True,True,True]
         print(top3[iii])
         # for i in range(3):
         #     print("position ",i," ",position_dict[top3[iii][i]])
         for ii in range(top_k):
-            tmp_dict = {x[iii][0]:hypo[iii][top3[0][ii]]}
+            tmp_dict = {x[iii][0]:x[iii][1]*(10-ii*3)}
             if top3[iii][ii] == 0:
                 if(flags[0]):
                     tmp_list = list_dict["gk"]
                     flags[0] = False
                     tmp_list.append(tmp_dict)
-            elif top3[iii][ii] <=3:
+                    if ii == 0:
+                        break
+            elif top3[iii][ii] ==1:
                 if(flags[1]):
-                    tmp_list = list_dict["back"]
+                    tmp_list = list_dict["lwback"]
                     flags[1] = False
                     tmp_list.append(tmp_dict)
-            elif top3[iii][ii] <=6:
+            elif top3[iii][ii] ==3 :
+                if(flags[5]):
+                    tmp_list = list_dict["rwback"]
+                    flags[5] = False
+                    tmp_list.append(tmp_dict)
+            elif top3[iii][ii] ==2:
                 if(flags[2]):
-                    tmp_list = list_dict["mid"]
+                    tmp_list = list_dict["cback"]
                     flags[2] = False
                     tmp_list.append(tmp_dict)
-            elif top3[iii][ii] <=9:
+            elif top3[iii][ii] <=6:
                 if(flags[3]):
-                    tmp_list = list_dict["fw"]
+                    tmp_list = list_dict["mid"]
                     flags[3] = False
                     tmp_list.append(tmp_dict)
+            elif top3[iii][ii] <=9:
+                if(flags[4]):
+                    tmp_list = list_dict["fw"]
+                    flags[4] = False
+                    tmp_list.append(tmp_dict)
+
+def swift(a,b,c,d):
+    d=c
+    c=b
+    b=a
+    return b,c,d
 
 def comb(list_dict,back:int , mid:int , fw:int):
-    comb_gk = list(combinations(list_dict["gk"],1))
-    comb_back = list(combinations(list_dict["back"],back))
+    comb_back = list(combinations(list_dict["cback"],back-2))
+    comb_lwback = list(combinations(list_dict["lwback"],back-3))
+    comb_rwback = list(combinations(list_dict["rwback"],back-3))
     comb_mid = list(combinations(list_dict["mid"],mid))
     comb_fw = list(combinations(list_dict["fw"],fw))
 
-    tmp_dict_list = []
-    for i in comb_gk:
-        for j in comb_back:
-            for k in comb_mid:
-                for l in comb_fw:
-                    tmp =i+j+k+l
-                    # tmp = i+j+k+l
-                    # 점수를 계산해서 tmp 맨마지막에 넣어줘야함
-                    if len(tmp) == 11:
-                        tmp_dict_list.append(tmp)
+    top1_score = 0
+    top2_score = None
+    top3_score = None
+    top1_list= None
+    top2_list= None
+    top3_list= None
+
+    count = 0
+    for i in comb_lwback:
+        for j in comb_rwback:
+            for k in comb_back:
+                for l in comb_mid:
+                    for m in comb_fw:
+                        print(count)
+                        count += 1
+                        tmp =list(i+k+j+l+m)
+                        tmp_dict = dict()
+                        for idict in tmp:
+                            tmp_dict.update(idict)
+                        # tmp = i+j+k+l
+                        # 점수를 계산해서 tmp 맨마지막에 넣어줘야함
+                        if len(tmp_dict) == 10:
+                            score = sum(tmp_dict.values())
+                            if top1_score < score:
+                               top1_score,top2_score,top3_score =swift(score,top1_score,top2_score,top3_score)
+                               top1_list,top2_list,top3_list=swift(list(tmp_dict.keys()),top1_list,top2_list,top3_list)
 
     return tmp_dict_list
 
-train_start()
+# train_start()
 
 X1 = pd.read_csv("football_players_final_kor.csv")
 X1 = X1.drop("Position",axis=1)
 X1 = X1.drop("Nationality",axis=1)
-list_dict = {"gk":list(),"back":list(),"mid":list(),"fw":list()}
-predict_and_add(X1.values,"./model/kor.model.ckpt",list_dict)
-tmp = comb(list_dict,4,4,2)
+#442 433 343 352 451
+#lccrlccrlr  lccrlcrlcr lcrlccrlcr lcrllcrrlr lccrllcrrc
+list_dict = {"gk":list(),"lwback":list(),"rwback":list(),"cback":list(),"mid":list(),"fw":list()}
+predict_and_add(X1.values,"./model/kor1.model.ckpt",list_dict)
+tmp = comb(list_dict,4,3,3)
 print(tmp)
+exit()
